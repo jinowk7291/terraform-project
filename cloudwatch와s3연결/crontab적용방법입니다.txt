@@ -1,0 +1,11 @@
+crontab 적용방법
+1. 현재 파일의 아래 명령어를 복사(SHELL=/bin/bash 부분부터복사하시면 됩니다)
+2. crontab -e 명령어 실행
+3. 1에서 복사한 내용 붙여 넣기
+4. 저장 후 crontab 데몬(crond)  restart
+* 현재 파일은 cloudwatch의 log group내용을 s3에게 5분단위로 전송하게 세팅되어있습니다.
+
+SHELL=/bin/bash
+PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/bin:/usr/local
+*/5 * * * * sh /home/user1/mytest/v4/log.sh > /var/log/test_log/`date "+\%Y\%m\%d\%M\%S"`.log &
+
