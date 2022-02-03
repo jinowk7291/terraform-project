@@ -41,3 +41,45 @@ resource "aws_security_group" "sec-bastion" {
     create_before_destroy = true
   }
 }
+
+resource "aws_security_group" "sec-peer" {
+  provider = "aws.vpc1"
+  name = "sgpeer1"
+  vpc_id = aws_vpc.test.id
+  ingress {
+    cidr_blocks = [ "0.0.0.0/0" ]
+    from_port = 0
+    protocol = "-1"
+    to_port = 0
+  }
+  egress {
+    cidr_blocks = [ "0.0.0.0/0" ]
+    from_port = 0
+    protocol = "-1"
+    to_port = 0
+  }
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource "aws_security_group" "sec-peer2" {
+  provider = "aws.vpc2"
+  name = "sgpeer2"
+  vpc_id = aws_vpc.v2test.id
+  ingress {
+    cidr_blocks = [ "0.0.0.0/0" ]
+    from_port = 0
+    protocol = "-1"
+    to_port = 0
+  }
+  egress {
+    cidr_blocks = [ "0.0.0.0/0" ]
+    from_port = 0
+    protocol = "-1"
+    to_port = 0
+  }
+  lifecycle {
+    create_before_destroy = true
+  }
+}
