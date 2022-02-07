@@ -1,0 +1,89 @@
+해야 할일
+cron으로 cloudwatch에 있는 log를 s3버킷으로 보내기
+- starttime과 endtime을 주기적으로 바꿔줘야함 -> 그래야 log를 중복하지 않고 보낼 수 있음
+- 정해진 시간마다 cron으로 log전송 명령을 실행해야함.
+  - starttime,endtime변수를 이용
+	
+사용한 파일
+- log.sh
+- crontab 설정 파일
+- policy.json
+
+1. S3 버킷 생성
+- 구글 드라이브에 업로드된 terraform s3폴더 안의 terra_s3.tf파일 이용
+- terraform apply로 생성
+
+2. S3 버킷 생성자에게 Policy 설정
+- 참조 : https://docs.aws.amazon.com/ko_kr/AmazonCloudWatch/latest/logs/S3ExportTasks.html
+- 전제조건 : user-name에 들어가는 사용자가 S3 버킷을 생성한 사용자여야 함("terraform"이라는 유저를 사용함)
+export S3POLICYARN=$(aws iam list-policies --query 'Policies[?PolicyName==`AmazonS3FullAccess`].{ARN:Arn}' --output text)
+
+export CWLPOLICYARN=$( aws iam list-policies --query 'Policies[?PolicyName==`CloudWatchLogsFullAccess`].{ARN:Arn}' --output text)
+
+aws iam attach-user-policy --user-name terraform --policy-arn $S3POLICYARN
+aws iam attach-user-policy --user-name terraform --policy-arn $CWLPOLICYARN
+aws iam list-attached-user-policies --user-name terraform
+
+3. policy.json 파일 작성
+vim policy.json
+- 아래 내용 작성
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Action": "s3:GetBucketAcl",
+            "Effect": "Allow",
+            "Resource": "arn:aws:s3:::cass-terraform-bucket",
+            "Principal": { "Service": "logs.ap-northeast-2.amazonaws.com" }
+        },
+        {
+            "Action": "s3:PutObject" ,
+            "Effect": "Allow",
+            "Resource": "arn:aws:s3:::cass-terraform-bucket/*",
+            "Condition": { "StringEquals": { "s3:x-amz-acl": "bucket-owner-full-control" } },
+            "Principal": { "Service": "logs.ap-northeast-2.amazonaws.com" }
+        }
+    ]
+}
+- Resource를 S3 버킷의 이름으로 변경하고, 
+- Principal을 로그 데이터를 내보내는 리전의 엔드포인트로 변경. 
+- *IAM 콘솔을 사용해서 생성하지 말라고 docs에 적혀 있음
+
+4. policy.json 파일 적용
+aws s3api put-bucket-policy --bucket cass-terraform-bucket --policy file://policy.json
+- put-bucket-policy 명령을 사용하여 버킷에 액세스 정책으로 방금 추가한 정책을 설정. 이 정책은 CloudWatch Logs가 Amazon S3 버킷으로 로그 데이터를 내보낼 수 있도록 함
+
+5. aws profile 적용
+aws configure --profile "terraform"
+위의 명령어 입력시 profile에 들어간 계정의 Access key, Secret key를 입력해야함
+
+6. log.sh 파일 생성
+vim log.sh
+- 아래 내용 입력
+#!/bin/bash
+
+#5분단위로 log 전송
+#unix time으로 저장
+starttime=$(date "+%s")
+starttime=$(($starttime - 300))
+#unix time에 * 1000을 해서 밀리세컨드로 설정해줘야 오류가 안남
+starttime=$(($starttime * 1000))
+endtime=$(date "+%s")
+endtime=$(($endtime * 1000))
+task_name=CW_log_$(date "+%Y-%m-%d-%M-%S")
+
+aws logs create-export-task --profile terraform --task-name ${task_name} --log-group-name "/aws/containerinsights/terraformEKScluster/performance" --from ${starttime} --to ${endtime} --destination "cass-terraform-bucket" --destination-prefix "export-task-output"
+
+7. log.sh 파일 실행권한 변경
+chmod 0777 log.sh
+
+8. crontab 설정 
+crontab -e
+- 아래 내용 입력
+SHELL=/bin/bash
+PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/bin:/usr/local
+*/5 * * * * sh /home/user1/mytest/v4/log.sh > /var/log/test_log/`date "+\%Y\%m\%d\%M\%S"`.log &
+
+- PATH 에러 발생시 대처
+  - whereis aws 명령어 실행 -> 결과값으로 나온 PATH를 crontab PATH(위의 PATH)에 추가해준다.
+
