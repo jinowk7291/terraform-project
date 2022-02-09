@@ -1,35 +1,32 @@
-# VPC
 resource "aws_vpc" "test" {
-  cidr_block = "159.0.0.0/16"
+  provider = aws.vpc1
+  cidr_block = "192.168.0.0/16"
+  enable_dns_hostnames = "true"
+  enable_dns_support = "true"
+  
   tags = {
     "Name" = "terraform-test-vpc"
   }
 }
 
-# VPC Endpoint
-resource "aws_vpc_endpoint" "s3" {
-  vpc_id = aws_vpc.test.id
-  service_name = "com.amazonaws.ap-northeast-2.s3"
-}
-
-# Subnets
-## public subnet
 resource "aws_subnet" "publicSubnet1" {
+  provider = aws.vpc1
   vpc_id = aws_vpc.test.id
-  cidr_block = "159.0.0.0/24"
+  cidr_block = "192.168.1.0/24"
   map_public_ip_on_launch = true
   availability_zone = "ap-northeast-2a"
   tags = {
     "Name" = "test-public-subnet-01"
     "kubernetes.io/cluster/terraformEKScluster" = "shared"
-    "kubernetes.io/role/elb" = 1
-    
+    "kubernetes.io/role/elb" = 1 
   }
 }
 
+
 resource "aws_subnet" "publicSubnet2" {
+  provider = aws.vpc1
   vpc_id = aws_vpc.test.id
-  cidr_block = "159.0.1.0/24"
+  cidr_block = "192.168.2.0/24"
   map_public_ip_on_launch = true
   availability_zone = "ap-northeast-2c"
   tags = {
@@ -39,10 +36,10 @@ resource "aws_subnet" "publicSubnet2" {
   }
 }
 
-## private ec2 subnet
 resource "aws_subnet" "privateEC2Subnet1" {
+  provider = aws.vpc1
   vpc_id = aws_vpc.test.id
-  cidr_block = "159.0.2.0/24"
+  cidr_block = "192.168.3.0/24"
   availability_zone = "ap-northeast-2a"
   tags = {
     "Name" = "test-private-ec2-subnet-01"
@@ -50,18 +47,19 @@ resource "aws_subnet" "privateEC2Subnet1" {
 }
 
 resource "aws_subnet" "privateEC2Subnet2" {
+  provider = aws.vpc1
   vpc_id = aws_vpc.test.id
-  cidr_block = "159.0.3.0/24"
+  cidr_block = "192.168.4.0/24"
   availability_zone = "ap-northeast-2c"
   tags = {
     "Name" = "test-private-ec2-subnet-02"
   }
 }
 
-## private rds subnet
 resource "aws_subnet" "privateRDSSubnet1" {
+  provider = aws.vpc1
   vpc_id = aws_vpc.test.id
-  cidr_block = "159.0.4.0/24"
+  cidr_block = "192.168.5.0/24"
   availability_zone = "ap-northeast-2a"
   tags = {
     "Name" = "test-private-rds-subnet-01"
@@ -69,29 +67,30 @@ resource "aws_subnet" "privateRDSSubnet1" {
 }
 
 resource "aws_subnet" "privateRDSSubnet2" {
+  provider = aws.vpc1
   vpc_id = aws_vpc.test.id
-  cidr_block = "159.0.5.0/24"
+  cidr_block = "192.168.6.0/24"
   availability_zone = "ap-northeast-2c"
   tags = {
     "Name" = "test-private-rds-subnet-02"
   }
 }
 
-# IGW
 resource "aws_internet_gateway" "testIGW" {
+  provider = aws.vpc1
   vpc_id = aws_vpc.test.id
   tags = {
     "Name" = "testIGW"
   }
 }
 
-# Neip
- resource "aws_eip" "nateip" {
+resource "aws_eip" "nateip" {
+  provider = aws.vpc1
   vpc = true
 }
 
-# NGW
 resource "aws_nat_gateway" "tf-natgw" {
+  provider = aws.vpc1
   allocation_id = aws_eip.nateip.id
   subnet_id = aws_subnet.publicSubnet2.id
   tags = {
@@ -99,9 +98,8 @@ resource "aws_nat_gateway" "tf-natgw" {
   }
 }
 
-
-# Public Route Table
 resource "aws_route_table" "testPublicRTb" {
+  provider = aws.vpc1
   vpc_id = aws_vpc.test.id
 
 
@@ -113,9 +111,12 @@ resource "aws_route_table" "testPublicRTb" {
   tags = {
     "Name" = "test-public-rtb"
   }
+  route {
+    cidr_block = "10.0.0.0/16"
+    vpc_peering_connection_id = aws_vpc_peering_connection.vpc_peering.id
+  }
 }
 
-# Private Route Table
 resource "aws_route_table" "testPrivateRTb" {
   vpc_id = aws_vpc.test.id
   route {
@@ -127,19 +128,7 @@ resource "aws_route_table" "testPrivateRTb" {
   }
 }
 
-## route
-### vpc endpoint associate
-resource "aws_vpc_endpoint_route_table_association" "publicRTbEndpoint" {
-  route_table_id = aws_route_table.testPublicRTb.id
-  vpc_endpoint_id = aws_vpc_endpoint.s3.id
-}
 
-resource "aws_vpc_endpoint_route_table_association" "privateRTbEndpoint" {
-  route_table_id = aws_route_table.testPrivateRTb.id
-  vpc_endpoint_id = aws_vpc_endpoint.s3.id
-}
-
-### subnet associate
 resource "aws_route_table_association" "publicRTbAssociation01" {
   subnet_id = aws_subnet.publicSubnet1.id
   route_table_id = aws_route_table.testPublicRTb.id
@@ -169,4 +158,3 @@ resource "aws_route_table_association" "privateRTbAssociation04" {
   subnet_id = aws_subnet.privateRDSSubnet2.id
   route_table_id = aws_route_table.testPrivateRTb.id
 }
-
