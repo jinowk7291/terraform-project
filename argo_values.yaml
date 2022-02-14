@@ -1004,15 +1004,14 @@ server:
     # -- Enable an ingress resource for the Argo CD server
     enabled: false
     # -- Additional ingress annotations
-    annotations: []
-      #kubernetes.io/ingress.class: alb
-      #alb.ingress.kubernetes.io/group.name: alb-01
-      #alb.ingress.kubernetes.io/target-type: instance
-      #alb.ingress.kubernetes.io/scheme: internet-facing
-      #alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
-      #alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:ap-northeast-2:687227541429:certificate/abcaf752-73c3-4a73-ae47-c1705ca534e1
-      #alb.ingress.kubernetes.io/backend-protocol: HTTP
-      #external-dns.alpha.kubernetes.io/hostname: argocd.kubedns.click
+    annotations: 
+      kubernetes.io/ingress.class: alb
+      alb.ingress.kubernetes.io/group.name: alb-01
+      alb.ingress.kubernetes.io/target-type: instance
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+      alb.ingress.kubernetes.io/backend-protocol: HTTP
+      external-dns.alpha.kubernetes.io/hostname: argocd.kubedns.click
     # -- Additional ingress labels
     labels: {}
     # -- Defines which ingress controller will implement the resource
