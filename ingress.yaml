@@ -1,0 +1,39 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: "argocd-ingress"
+  namespace: argocd
+  annotations:
+    alb.ingress.kubernetes.io/group.name: alb-01
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: instance
+    alb.ingress.kubernetes.io/backend-protocol: HTTPS
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":8443}, {"HTTP":8080}]'
+    #alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:ap-northeast-2:687227541429:certificate/d7aa7884-98c2-4ec8-8eb4-5354033dde1f
+    alb.ingress.kubernetes.io/tags: createdBy=aws-load-balancer-controller
+    alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-2016-08
+    alb.ingress.kubernetes.io/actions.ssl-redirect: '{"Type": "redirect", "RedirectConfig": { "Protocol": "HTTPS", "Port": "8443", "StatusCode": "HTTP_301"}}'
+    external-dns.alpha.kubernetes.io/hostname: argocd.kubedns.click
+spec:
+  rules:
+    - host: 
+      http:
+        paths:
+          - path: /*
+            pathType: Prefix
+            backend:
+              service:
+                name: ssl-redirect
+                port:
+                  name: use-annotation
+          - path: /*
+            pathType: Prefix
+            backend:
+              service:
+                name: argo-cd-argocd-server
+                port:
+                  number: 443
+            path: /
+            pathType: Prefix
+
