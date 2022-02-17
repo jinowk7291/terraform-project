@@ -1,4 +1,5 @@
 resource "aws_acm_certificate" "kubedns" {
+  subject_alternative_names = ["argocd.kubends.com"]
   domain_name       = "kubedns.click"
   validation_method = "DNS"
 }
@@ -10,7 +11,6 @@ resource "aws_route53_record" "kubedns" {
       record = dvo.resource_record_value
       type   = dvo.resource_record_type
       zone_id = "${aws_route53_zone.kubedns.zone_id}"
-      name_server = "ns-1305.awsdns-35.org"
     }
   }
 
@@ -29,5 +29,3 @@ resource "aws_acm_certificate_validation" "kubedns" {
     create = "20m"
   }
 }
-
-

@@ -1964,7 +1964,7 @@ prometheus:
     ## Must be provided if Ingress is enabled.
     ##
     #hosts:
-    #  - "exmaple.com"
+    #  - "prom.kubedns.click"
     #hosts: []
 
     ## Paths to use for ingress rules - one path should match the prometheusSpec.routePrefix

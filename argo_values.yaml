@@ -1002,15 +1002,17 @@ server:
 
   ingress:
     # -- Enable an ingress resource for the Argo CD server
-    enabled: false
+    enabled: true
     # -- Additional ingress annotations
     annotations: 
-      kubernetes.io/ingress.class: alb
-      alb.ingress.kubernetes.io/group.name: alb-01
-      alb.ingress.kubernetes.io/target-type: instance
-      alb.ingress.kubernetes.io/scheme: internet-facing
-      alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+      alb.ingress.kubernetes.io/actions.ssl-redirect: '{"Type": "redirect", "RedirectConfig":
+        { "Protocol": "HTTPS", "Port": "443", "StatusCode": "HTTP_301"}}'
       alb.ingress.kubernetes.io/backend-protocol: HTTP
+      alb.ingress.kubernetes.io/group.name: alb-01
+      alb.ingress.kubernetes.io/healthcheck-path: /login
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":8083,"HTTPS": 8443}]'
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-2016-08  
       external-dns.alpha.kubernetes.io/hostname: argocd.kubedns.click
     # -- Additional ingress labels
     labels: {}
@@ -1029,7 +1031,7 @@ server:
     paths:
       - /
     # -- Ingress path type. One of `Exact`, `Prefix` or `ImplementationSpecific`
-    pathType: Prefix
+    pathType: ImplementationSpecific
     # -- Additional ingress paths
     extraPaths: []
       
@@ -1038,13 +1040,13 @@ server:
       #     serviceName: prot-forward
       #     servicePort: use-annotation
       ## for Kubernetes >=1.19 (when "networking.k8s.io/v1" is used)
-      # - path: /*
-      #   pathType: Prefix
-      #   backend:
-      #     service:
-      #       name: port-forward
-      #       port:
-      #         name: use-annotation
+       - path: /*
+         pathType: ImplementationSpecific
+         backend:
+           service:
+             name: ssl-redirect
+             port:
+               name: use-annotation
 
     # -- Ingress TLS configuration
     tls:
@@ -1054,7 +1056,7 @@ server:
       #     - argocd.example.com
 
     # -- Uses `server.service.servicePortHttps` instead `server.service.servicePortHttp`
-    https: false
+    https: true
 
   # dedicated ingress for gRPC as documented at
   # Ref: https://argoproj.github.io/argo-cd/operator-manual/ingress/
@@ -1065,6 +1067,12 @@ server:
     isAWSALB: false
     # -- Additional ingress annotations for dedicated [gRPC-ingress]
     annotations: {}
+      #alb.ingress.kubernetes.io/scheme: internet-facing    
+      #alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:ap-northeast-2:687227541429:certificate/abcaf752-73c3-4a73-ae47-c1705ca534e1    
+      #alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'    
+      #alb.ingress.kubernetes.io/backend-protocol: HTTPS    
+      #kubernetes.io/ingress.class: alb
+      #alb.ingress.kubernetes.io/group.name: alb-01
     # -- Additional ingress labels for dedicated [gRPC-ingress]
     labels: {}
     # -- Defines which ingress controller will implement the resource [gRPC-ingress]
@@ -1077,7 +1085,7 @@ server:
       ## are running. Instance mode needs type NodePort, IP mode needs type
       ## ClusterIP
       ## Ref: https://kubernetes-sigs.github.io/aws-load-balancer-controller/v2.2/how-it-works/#ingress-traffic
-      serviceType: NodePort
+      serviceType: ClusterIP
       # -- Backend protocol version for the AWS ALB gRPC service
       ## This tells AWS to send traffic from the ALB using HTTP2. Can use gRPC as well if you want to leverage gRPC specific features
       backendProtocolVersion: HTTP2
@@ -1120,7 +1128,7 @@ server:
       #     - argocd.example.com
 
     # -- Uses `server.service.servicePortHttps` instead `server.service.servicePortHttp`
-    https: false
+    https: true
 
   # Create a OpenShift Route with SSL passthrough for UI and CLI
   # Consider setting 'hostname' e.g. https://argocd.apps-crc.testing/ using your Default Ingress Controller Domain
